@@ -40,13 +40,15 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const contents = messages.map((message) => ({
-      role: message.role === "assistant" ? "model" : "user",
-      parts: [{ text: String(message.content || "") }]
-    }));
+    const contents = messages
+      .filter(message => message.content)
+      .map(message => ({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text: String(message.content) }]
+      }));
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
       {
         method: "POST",
         headers: {
