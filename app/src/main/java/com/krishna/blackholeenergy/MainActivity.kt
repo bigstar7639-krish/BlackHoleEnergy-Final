@@ -9,12 +9,27 @@ import android.view.Gravity
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var chatLayout: LinearLayout
     private lateinit var scrollView: ScrollView
     private lateinit var input: EditText
+    private lateinit var sendButton: Button
+
+    private val executor = Executors.newSingleThreadExecutor()
+
+    private val conversation = JSONArray()
+
+    private val serverUrl =
+        "https://blackholeenergy-final.onrender.com/api/chat"
 
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
@@ -73,8 +88,8 @@ class MainActivity : AppCompatActivity() {
 
         addBubble(
             "Vanakkam Krishna! 👋\n\n" +
-            "I'm Black Hole Energy AI. Your journey starts here. " +
-            "Ask me anything!",
+            "I'm Black Hole Energy OMNI AI. " +
+            "Ask me anything. Let's explore the universe! ⚡",
             false
         )
 
@@ -95,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             background = rounded(Color.rgb(30, 30, 48), 24)
         }
 
-        val send = Button(this).apply {
+        sendButton = Button(this).apply {
             text = "SEND"
             textSize = 12f
             setTextColor(Color.BLACK)
@@ -113,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         bottom.addView(
-            send,
+            sendButton,
             LinearLayout.LayoutParams(dp(82), dp(52))
         )
 
@@ -184,13 +199,111 @@ class MainActivity : AppCompatActivity() {
         if (message.isEmpty()) return
 
         addBubble(message, true)
-
         input.text.clear()
 
-        addBubble(
-            "Chat interface ready! ⚡\n\n" +
-            "Real AI connection will be added in the next step.",
-            false
+        input.isEnabled = false
+        sendButton.isEnabled = false
+        sendButton.text = "..."
+
+        conversation.put(
+            JSONObject()
+                .put("role", "user")
+                .put("content", message)
         )
+
+        val requestMessages = conversation.toString()
+
+        executor.execute {
+
+            var connection: HttpURLConnection? = null
+
+            try {
+                connection =
+                    URL(serverUrl).openConnection() as HttpURLConnection
+
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 20000
+                connection.readTimeout = 60000
+                connection.doOutput = true
+
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/json"
+                )
+
+                val requestBody = JSONObject()
+                    .put("messages", JSONArray(requestMessages))
+                    .toString()
+
+                connection.outputStream.use { output ->
+                    output.write(requestBody.toByteArray(Charsets.UTF_8))
+                }
+
+                val status = connection.responseCode
+
+                val stream = if (status in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+
+                val responseText = BufferedReader(
+                    InputStreamReader(stream)
+                ).use { reader ->
+                    reader.readText()
+                }
+
+                val responseJson = JSONObject(responseText)
+
+                if (status !in 200..299) {
+                    throw Exception(
+                        responseJson.optString(
+                            "error",
+                            "AI request failed. HTTP $status"
+                        )
+                    )
+                }
+
+                val reply = responseJson.optString(
+                    "reply",
+                    "No response received."
+                )
+
+                conversation.put(
+                    JSONObject()
+                        .put("role", "assistant")
+                        .put("content", reply)
+                )
+
+                runOnUiThread {
+                    addBubble(reply, false)
+                    finishSending()
+                }
+
+            } catch (error: Exception) {
+
+                runOnUiThread {
+                    addBubble(
+                        "Error: ${error.message ?: "Please try again."}",
+                        false
+                    )
+                    finishSending()
+                }
+
+            } finally {
+                connection?.disconnect()
+            }
+        }
+    }
+
+    private fun finishSending() {
+        input.isEnabled = true
+        sendButton.isEnabled = true
+        sendButton.text = "SEND"
+    }
+
+    override fun onDestroy() {
+        executor.shutdown()
+        super.onDestroy()
     }
 }
