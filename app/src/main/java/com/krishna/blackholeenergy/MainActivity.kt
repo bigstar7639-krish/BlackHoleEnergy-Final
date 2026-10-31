@@ -16,8 +16,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scrollView: ScrollView
     private lateinit var input: EditText
 
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
 
     private fun rounded(color: Int, radius: Int): GradientDrawable {
         return GradientDrawable().apply {
@@ -39,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val header = TextView(this).apply {
-            text = "🕳️ BLACK HOLE ENERGY\n        OMNI AI  ⚡"
+            text = "🕳️ BLACK HOLE ENERGY\nOMNI AI ⚡"
             textSize = 23f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -71,8 +72,9 @@ class MainActivity : AppCompatActivity() {
         scrollView.addView(chatLayout)
 
         addBubble(
-            "Vanakkam Krishna! 👋\n\nI'm Black Hole Energy AI. " +
-            "Your journey starts here. Ask me anything!",
+            "Vanakkam Krishna! 👋\n\n" +
+            "I'm Black Hole Energy AI. Your journey starts here. " +
+            "Ask me anything!",
             false
         )
 
@@ -87,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             setHintTextColor(Color.GRAY)
             setTextColor(Color.WHITE)
             textSize = 15f
-            singleLine = true
+            setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_SEND
             setPadding(dp(14), dp(12), dp(14), dp(12))
             background = rounded(Color.rgb(30, 30, 48), 24)
@@ -98,7 +100,9 @@ class MainActivity : AppCompatActivity() {
             textSize = 12f
             setTextColor(Color.BLACK)
             background = rounded(Color.rgb(0, 220, 190), 22)
-            setOnClickListener { sendMessage() }
+            setOnClickListener {
+                sendMessage()
+            }
         }
 
         bottom.addView(
@@ -117,27 +121,35 @@ class MainActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 sendMessage()
                 true
-            } else false
+            } else {
+                false
+            }
         }
 
         root.addView(top)
+
         root.addView(
             scrollView,
             LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
             )
         )
+
         root.addView(bottom)
 
         setContentView(root)
     }
 
     private fun addBubble(message: String, isUser: Boolean) {
+
         val bubble = TextView(this).apply {
             text = message
             textSize = 15f
             setTextColor(Color.WHITE)
             setPadding(dp(14), dp(12), dp(14), dp(12))
+
             background = rounded(
                 if (isUser) Color.rgb(20, 110, 105)
                 else Color.rgb(35, 35, 58),
@@ -148,31 +160,36 @@ class MainActivity : AppCompatActivity() {
         val wrapper = LinearLayout(this).apply {
             gravity = if (isUser) Gravity.END else Gravity.START
             setPadding(0, dp(5), 0, dp(5))
+
             addView(
                 bubble,
                 LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    dp(280),
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    width = dp(280)
-                }
+                )
             )
         }
 
         chatLayout.addView(wrapper)
-        scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
+
+        scrollView.post {
+            scrollView.fullScroll(ScrollView.FOCUS_DOWN)
+        }
     }
 
     private fun sendMessage() {
+
         val message = input.text.toString().trim()
+
         if (message.isEmpty()) return
 
         addBubble(message, true)
+
         input.text.clear()
 
         addBubble(
-            "Chat interface ready! ⚡ Real AI connection " +
-            "will be added in the next step.",
+            "Chat interface ready! ⚡\n\n" +
+            "Real AI connection will be added in the next step.",
             false
         )
     }
