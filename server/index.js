@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -10,24 +11,26 @@ app.use(express.json({ limit: "10mb" }));
 app.get("/", (req, res) => {
   res.json({
     app: "Black Hole Energy OMNI AI",
-    status: "Backend online ⚡"
+    status: "Backend online ⚡",
+    provider: "Google Gemini"
   });
 });
 
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    ai: "Black Hole Energy"
+    ai: "Google Gemini"
   });
 });
 
 app.post("/api/chat", async (req, res) => {
   try {
     const { messages } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!apiKey) {
       return res.status(500).json({
-        error: "AI API key is not configured."
+        error: "Gemini API key is not configured in Render."
       });
     }
 
@@ -37,23 +40,30 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
+    const contents = messages.map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: String(message.content || "") }]
+    }));
+
     const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+          "x-goog-api-key": apiKey
         },
         body: JSON.stringify({
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: "You are Black Hole Energy OMNI AI, a helpful and friendly AI assistant."
-            },
-            ...messages
-          ]
+          systemInstruction: {
+            parts: [{
+              text: "You are Black Hole Energy OMNI AI, a helpful, friendly AI assistant. Reply clearly and naturally."
+            }]
+          },
+          contents,
+          generationConfig: {
+            maxOutputTokens: 2048,
+            temperature: 0.7
+          }
         })
       }
     );
@@ -62,15 +72,26 @@ app.post("/api/chat", async (req, res) => {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: data.error?.message || "AI request failed."
+        error: data.error?.message || "Gemini request failed."
       });
     }
 
-    res.json({
-      reply: data.choices?.[0]?.message?.content || "No response received."
-    });
+    const reply = data.candidates?.[0]?.content?.parts
+      ?.map(part => part.text || "")
+      .join("")
+      .trim();
+
+    if (!reply) {
+      return res.status(502).json({
+        error: "Gemini returned an empty response."
+      });
+    }
+
+    res.json({ reply });
 
   } catch (error) {
+    console.error("Gemini error:", error);
+
     res.status(500).json({
       error: "Server error. Please try again."
     });
@@ -80,5 +101,5 @@ app.post("/api/chat", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Black Hole Energy server running on ${PORT}`);
+  console.log(`Black Hole Energy Gemini server running on ${PORT}`);
 });
